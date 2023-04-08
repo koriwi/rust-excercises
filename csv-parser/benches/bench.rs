@@ -1,6 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
-use rs_csv_parse::CsvParser;
+use csv_parser::CsvParser;
 
 fn generate_csv(cols: u32, rows: u32, quotes: bool) -> String {
     let mut csv = String::new();
@@ -22,14 +22,14 @@ fn generate_csv(cols: u32, rows: u32, quotes: bool) -> String {
     }
     csv.push('\n');
     for row in 0..rows {
-        let row_number_str = row.to_string();
+        let row_number_str = (row % 1000).to_string();
         for col in 0..cols {
             if quotes {
                 csv.push('"');
             }
 
             csv.push_str(&row_number_str);
-            let col_number_str = col.to_string();
+            let col_number_str = (col % 1000).to_string();
             csv.push_str(&col_number_str);
 
             if quotes {
@@ -51,29 +51,56 @@ fn parse(text: &String) {
 
 fn small_no_quotes(c: &mut Criterion) {
     let text = generate_csv(10, 1000, false);
-    c.bench_function("small-no-quotes", |b| b.iter(|| parse(&text)));
+    let text_size = text.len() as f32 / 1024f32;
+    c.bench_function(
+        format!("small-no-quotes({:.1}kb)", text_size).as_str(),
+        |b| b.iter(|| parse(&text)),
+    );
 }
 fn small_quotes(c: &mut Criterion) {
     let text = generate_csv(10, 1000, true);
-    c.bench_function("small-with-quotes", |b| b.iter(|| parse(&text)));
+    let text_size = text.len() as f32 / 1024f32;
+    c.bench_function(
+        format!("small-with-quotes({:.1}kb)", text_size).as_str(),
+        |b| b.iter(|| parse(&text)),
+    );
 }
 
 fn big_no_quotes(c: &mut Criterion) {
-    let text = generate_csv(100, 10000, false);
-    c.bench_function("big-no-quotes", |b| b.iter(|| parse(&text)));
+    let text = generate_csv(10, 1000000, false);
+    let text_size = text.len() as f32 / 1024f32;
+    c.bench_function(format!("big-no-quotes({:.1}kb)", text_size).as_str(), |b| {
+        b.iter(|| parse(&text))
+    });
 }
 fn big_quotes(c: &mut Criterion) {
-    let text = generate_csv(100, 10000, true);
-    c.bench_function("big-with-quotes", |b| b.iter(|| parse(&text)));
+    let text = generate_csv(10, 1000000, true);
+    let text_size = text.len() as f32 / 1024f32;
+    c.bench_function(
+        format!("big-with-quotes({:.1}kb)", text_size).as_str(),
+        |b| b.iter(|| parse(&text)),
+    );
 }
 
 fn gigantic_no_quotes(c: &mut Criterion) {
+    let mut group = c.benchmark_group("lower-samples");
+    group.sample_size(10);
     let text = generate_csv(100, 1000000, false);
-    c.bench_function("gigantic-no-quotes", |b| b.iter(|| parse(&text)));
+    let text_size = text.len() as f32 / 1024f32 / 1024f32;
+    group.bench_function(
+        format!("gigantic-no-quotes({:.1}mb)", text_size).as_str(),
+        |b| b.iter(|| parse(&text)),
+    );
 }
 fn gigantic_quotes(c: &mut Criterion) {
+    let mut group = c.benchmark_group("lower-samples");
+    group.sample_size(10);
     let text = generate_csv(100, 1000000, true);
-    c.bench_function("gigantic-with-quotes", |b| b.iter(|| parse(&text)));
+    let text_size = text.len() as f32 / 1024f32 / 1024f32;
+    group.bench_function(
+        format!("gigantic-with-quotes({:.1}mb)", text_size).as_str(),
+        |b| b.iter(|| parse(&text)),
+    );
 }
 
 criterion_group!(

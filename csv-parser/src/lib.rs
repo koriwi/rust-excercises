@@ -43,7 +43,7 @@ impl<'a> CSVData<'a> {
 #[derive(Debug, Default)]
 pub struct Data<'a> {
     trim_quotes: bool,
-    quote: Option<char>,
+    quote: Option<u8>,
     input: Option<&'a str>,
     index: usize,
     delimiter: u8,
@@ -176,20 +176,20 @@ impl<'a> Deciders for CsvParser<'a> {
     }
     fn find_header_delimiter(&self) -> FindHeaderDelimiterEvents {
         let char = match self.data.input {
-            Some(c) => c.as_bytes()[self.data.index],
+            Some(input) => input.as_bytes().get(self.data.index),
             None => return FindHeaderDelimiterEvents::Empty,
         };
         match char {
-            c if c == self.data.delimiter => FindHeaderDelimiterEvents::FoundDelimiter,
-            b'"' => FindHeaderDelimiterEvents::FoundLeftQuote,
-            b'\'' => FindHeaderDelimiterEvents::FoundLeftQuote,
-            b'\n' => FindHeaderDelimiterEvents::FoundNewLine,
+            Some(c) if c == &self.data.delimiter => FindHeaderDelimiterEvents::FoundDelimiter,
+            Some(c) if *c == b'"' => FindHeaderDelimiterEvents::FoundLeftQuote,
+            Some(c) if *c == b'\'' => FindHeaderDelimiterEvents::FoundLeftQuote,
+            Some(c) if *c == b'\n' => FindHeaderDelimiterEvents::FoundNewLine,
             _ => FindHeaderDelimiterEvents::FoundElse,
         }
     }
     fn find_header_right_quote(&self) -> FindHeaderRightQuoteEvents {
         let char = match self.data.input {
-            Some(c) if !c.is_empty() => c.as_bytes()[self.data.index],
+            Some(input) if !input.is_empty() => input.as_bytes().get(self.data.index),
             _ => return FindHeaderRightQuoteEvents::Illegal,
         };
         let quote = match self.data.quote {
@@ -197,35 +197,35 @@ impl<'a> Deciders for CsvParser<'a> {
             None => return FindHeaderRightQuoteEvents::Illegal,
         };
         match char {
-            c if c as char == quote => FindHeaderRightQuoteEvents::FoundRightQuote,
+            Some(c) if c == &quote => FindHeaderRightQuoteEvents::FoundRightQuote,
             _ => FindHeaderRightQuoteEvents::FoundElse,
         }
     }
     fn find_body_delimiter(&self) -> FindBodyDelimiterEvents {
         let char = match self.data.input {
-            Some(c) if !c.is_empty() => c.as_bytes()[self.data.index],
+            Some(input) if !input.is_empty() => input.as_bytes().get(self.data.index),
             _ => return FindBodyDelimiterEvents::Empty,
         };
         match char {
-            c if c == self.data.delimiter => FindBodyDelimiterEvents::FoundDelimiter,
-            b'"' => FindBodyDelimiterEvents::FoundLeftQuote,
-            b'\'' => FindBodyDelimiterEvents::FoundLeftQuote,
-            b'\n' => FindBodyDelimiterEvents::FoundNewLine,
+            Some(c) if c == &self.data.delimiter => FindBodyDelimiterEvents::FoundDelimiter,
+            Some(c) if *c == b'"' => FindBodyDelimiterEvents::FoundLeftQuote,
+            Some(c) if *c == b'\'' => FindBodyDelimiterEvents::FoundLeftQuote,
+            Some(c) if *c == b'\n' => FindBodyDelimiterEvents::FoundNewLine,
             _ => FindBodyDelimiterEvents::FoundElse,
         }
     }
     fn find_body_right_quote(&self) -> FindBodyRightQuoteEvents {
         let char = match self.data.input {
-            Some(c) if !c.is_empty() => c.as_bytes()[self.data.index],
+            Some(input) if !input.is_empty() => input.as_bytes().get(self.data.index),
             _ => return FindBodyRightQuoteEvents::Illegal,
         };
         let quote = match self.data.quote {
-            Some(c) => c,
+            Some(input) => input,
             None => return FindBodyRightQuoteEvents::Illegal,
         };
         match char {
-            c if c as char == quote => FindBodyRightQuoteEvents::FoundRightQuote,
-            b'\n' => FindBodyRightQuoteEvents::Illegal,
+            Some(c) if c == &quote => FindBodyRightQuoteEvents::FoundRightQuote,
+            Some(c) if *c == b'\n' => FindBodyRightQuoteEvents::Illegal,
             _ => FindBodyRightQuoteEvents::FoundElse,
         }
     }
@@ -242,7 +242,7 @@ impl<'a> CsvParser<'a> {
     fn store_cs_value(&mut self, is_header: bool) -> Result<(), String> {
         let value = &self.data.input.ok_or("input is empty")?[..self.data.index];
         let value = match self.data.quote {
-            Some(quote) if self.data.trim_quotes => value.trim_matches(quote),
+            Some(quote) if self.data.trim_quotes => value.trim_matches((quote) as char),
             _ => value,
         };
 
@@ -288,7 +288,10 @@ impl<'a> CsvParser<'a> {
             return Ok(());
         }
         let input = self.data.input.ok_or("input is empty")?;
-        self.data.quote = Some(input.as_bytes()[self.data.index] as char);
+        match input.as_bytes().get(self.data.index) {
+            Some(i) => self.data.quote = Some(*i),
+            None => Err("quote is empty")?,
+        };
         Ok(())
     }
     pub fn parse(&mut self, text: &'a String) -> Result<Option<CSVData>, Box<dyn Error>> {

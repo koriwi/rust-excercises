@@ -1,5 +1,5 @@
 [package]
-name = "rs-csv-parse"
+name = "csv-parser"
 version = "0.1.0"
 edition = "2021"
 
@@ -16,6 +16,6 @@ debug = true
 debuginfo-level = 1
 
 [dependencies]
-finite-state-machine = { git = "https://github.com/koriwi/finite-state-machine.git" }
+finite-state-machine = { git = "https://github.com/koriwi/finite-state-machine.git", branch = "master" }
 [dev-dependencies]
 criterion = "0.4.0"

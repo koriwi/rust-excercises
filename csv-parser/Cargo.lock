@@ -177,6 +177,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "csv-parser"
+version = "0.1.0"
+dependencies = [
+ "criterion",
+ "finite-state-machine",
+]
+
+[[package]]
 name = "either"
 version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -185,7 +193,7 @@ checksum = "7fcaabb2fef8c910e7f4c7ce9f67a1283a1715879a7c230ca9d6d1ae31f16d91"
 [[package]]
 name = "finite-state-machine"
 version = "0.1.0"
-source = "git+https://github.com/koriwi/finite-state-machine.git#a8d5160e6d714d7d92f63c5406860b194879436d"
+source = "git+https://github.com/koriwi/finite-state-machine.git?branch=master#2093af8a2a935bf9b507f333b3eb9aa97b9d0672"
 dependencies = [
  "paste",
 ]
@@ -409,14 +417,6 @@ name = "regex-syntax"
 version = "0.6.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f162c6dd7b008981e4d40210aca20b4bd0f9b60ca9271061b07f78537722f2e1"
-
-[[package]]
-name = "rs-csv-parse"
-version = "0.1.0"
-dependencies = [
- "criterion",
- "finite-state-machine",
-]
 
 [[package]]
 name = "ryu"

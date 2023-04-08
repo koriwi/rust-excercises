@@ -1,3 +1,1 @@
-/target
-callgrind*
-*.csv
+target
