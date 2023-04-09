@@ -193,7 +193,7 @@ checksum = "7fcaabb2fef8c910e7f4c7ce9f67a1283a1715879a7c230ca9d6d1ae31f16d91"
 [[package]]
 name = "finite-state-machine"
 version = "0.1.0"
-source = "git+https://github.com/koriwi/finite-state-machine.git?branch=master#2093af8a2a935bf9b507f333b3eb9aa97b9d0672"
+source = "git+https://github.com/koriwi/finite-state-machine.git#c2d360308ea25bf4a76355d6a424163562294d7d"
 dependencies = [
  "paste",
 ]
