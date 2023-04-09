@@ -8,6 +8,15 @@ verbose = ["finite-state-machine/verbose"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+# enable release debug symbols
+# [profile.release]
+# debug = true
+# [rust]
+# debuginfo-level = 1
+# [target.x86_64-unknown-linux-gnu]
+# linker = "/usr/bin/clang"
+# rustflags = ["-Clink-arg=-fuse-ld=lld", "-Clink-arg=-Wl,--no-rosegment"]
+
 [[bench]]
 name = "bench"
 harness = false

@@ -11,12 +11,10 @@ impl<'a> CSVData<'a> {
     fn new(column_names: Vec<&'a str>, rows: Vec<CSVRow<'a>>) -> Self {
         CSVData { column_names, rows }
     }
-    #[inline(always)]
     fn push_column(&mut self, column_name: &'a str) -> Result<(), String> {
         self.column_names.push(column_name);
         Ok(())
     }
-    #[inline(always)]
     fn push_value(&mut self, value: Option<&'a str>) -> Result<(), String> {
         self.rows
             .last_mut()
@@ -24,7 +22,6 @@ impl<'a> CSVData<'a> {
             .push(value);
         Ok(())
     }
-    #[inline(always)]
     fn add_empty_row(&mut self) -> Result<(), String> {
         if let Some(row) = self.rows.last() {
             if row.len() != self.column_names.len() {
@@ -47,6 +44,46 @@ pub struct Data<'a> {
     index: usize,
     delimiter: u8,
     parsed_csv: Option<CSVData<'a>>,
+}
+impl<'a> Data<'a> {
+    fn store_cs_value(&mut self, is_header: bool) -> Result<(), String> {
+        let value = &self.input.ok_or("input is empty")?[..self.index];
+
+        let parsed_csv = self
+            .parsed_csv
+            .as_mut()
+            .ok_or("parsed_csv is undefined, impossible")?;
+        // this smells
+        if is_header {
+            if value.is_empty() {
+                return Err("value cannot be empty in header")?;
+            }
+            parsed_csv.push_column(value)?;
+        } else if value.is_empty() {
+            parsed_csv.push_value(None)?;
+        } else {
+            parsed_csv.push_value(Some(value))?;
+        };
+        self.skip_char_and_set_start()?;
+        Ok(())
+    }
+    fn add_empty_row(&mut self) -> Result<(), String> {
+        self.parsed_csv
+            .as_mut()
+            .ok_or("parsed_csv is undefined, impossible")?
+            .add_empty_row()?;
+        Ok(())
+    }
+    fn store_char(&mut self) -> Result<(), String> {
+        self.index += 1;
+        Ok(())
+    }
+    #[inline(always)]
+    fn skip_char_and_set_start(&mut self) -> Result<(), String> {
+        self.input = Some(&self.input.ok_or("input is empty")?[self.index + 1..]);
+        self.index = 0;
+        Ok(())
+    }
 }
 impl<'a> fmt::Debug for Data<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -119,23 +156,23 @@ impl<'a> StartTransitions for CsvParser<'a> {
 impl<'a> FindHeaderDelimiterTransitions for CsvParser<'a> {
     fn illegal(&mut self) {}
     fn found_else(&mut self) -> Result<(), String> {
-        self.store_char()?;
+        self.data.store_char()?;
         Ok(())
     }
     fn found_delimiter(&mut self) -> Result<(), String> {
-        self.store_cs_value(true)?;
+        self.data.store_cs_value(true)?;
         Ok(())
     }
     fn empty(&mut self) -> Result<(), String> {
         Ok(())
     }
     fn found_left_quote(&mut self) -> Result<(), String> {
-        self.skip_char_and_set_start()?;
+        self.data.skip_char_and_set_start()?;
         Ok(())
     }
     fn found_new_line(&mut self) -> Result<(), String> {
-        self.store_cs_value(true)?;
-        self.add_empty_row()?;
+        self.data.store_cs_value(true)?;
+        self.data.add_empty_row()?;
         Ok(())
     }
 }
@@ -147,7 +184,7 @@ impl<'a> FindHeaderRightQuoteTransitions for CsvParser<'a> {
         FindHeaderDelimiterTransitions::found_else(self)
     }
     fn found_right_quote(&mut self) -> Result<(), String> {
-        self.store_cs_value(true)?;
+        self.data.store_cs_value(true)?;
         Ok(())
     }
 }
@@ -155,45 +192,45 @@ impl<'a> FindHeaderRightQuoteTransitions for CsvParser<'a> {
 impl<'a> IgnoreNextHeaderDelimiterTransitions for CsvParser<'a> {
     fn illegal(&mut self) {}
     fn found_delimiter(&mut self) -> Result<(), String> {
-        self.skip_char_and_set_start()
+        self.data.skip_char_and_set_start()
     }
     fn found_new_line(&mut self) -> Result<(), String> {
-        self.add_empty_row()?;
-        self.skip_char_and_set_start()
+        self.data.add_empty_row()?;
+        self.data.skip_char_and_set_start()
     }
 }
 
 impl<'a> IgnoreNextBodyDelimiterTransitions for CsvParser<'a> {
     fn illegal(&mut self) {}
     fn found_delimiter(&mut self) -> Result<(), String> {
-        self.skip_char_and_set_start()
+        self.data.skip_char_and_set_start()
     }
     fn found_new_line(&mut self) -> Result<(), String> {
-        self.add_empty_row()?;
-        self.skip_char_and_set_start()
+        self.data.add_empty_row()?;
+        self.data.skip_char_and_set_start()
     }
 }
 
 impl<'a> FindBodyDelimiterTransitions for CsvParser<'a> {
     fn illegal(&mut self) {}
     fn found_new_line(&mut self) -> Result<(), String> {
-        self.store_cs_value(false)?;
-        self.add_empty_row()?;
+        self.data.store_cs_value(false)?;
+        self.data.add_empty_row()?;
         Ok(())
     }
     fn found_else(&mut self) -> Result<(), String> {
-        self.store_char()?;
+        self.data.store_char()?;
         Ok(())
     }
     fn found_delimiter(&mut self) -> Result<(), String> {
-        self.store_cs_value(false)?;
+        self.data.store_cs_value(false)?;
         Ok(())
     }
     fn empty(&mut self) -> Result<(), String> {
         Ok(())
     }
     fn found_left_quote(&mut self) -> Result<(), String> {
-        self.skip_char_and_set_start()?;
+        self.data.skip_char_and_set_start()?;
         Ok(())
     }
 }
@@ -201,11 +238,11 @@ impl<'a> FindBodyDelimiterTransitions for CsvParser<'a> {
 impl<'a> FindBodyRightQuoteTransitions for CsvParser<'a> {
     fn illegal(&mut self) {}
     fn found_right_quote(&mut self) -> Result<(), String> {
-        self.store_cs_value(false)?;
+        self.data.store_cs_value(false)?;
         Ok(())
     }
     fn found_else(&mut self) -> Result<(), String> {
-        self.store_char()?;
+        self.data.store_char()?;
         Ok(())
     }
 }
@@ -292,46 +329,6 @@ impl<'a> CsvParser<'a> {
         parser.data.delimiter = delimiter as u8;
         parser.data.trim_quotes = trim_quotes;
         parser
-    }
-    #[inline(always)]
-    fn store_cs_value(&mut self, is_header: bool) -> Result<(), String> {
-        let value = &self.data.input.ok_or("input is empty")?[..self.data.index];
-
-        let parsed_csv = self
-            .data
-            .parsed_csv
-            .as_mut()
-            .ok_or("parsed_csv is undefined, impossible")?;
-        // this smells
-        if is_header {
-            if value.is_empty() {
-                return Err("value cannot be empty in header")?;
-            }
-            parsed_csv.push_column(value)?;
-        } else if value.is_empty() {
-            parsed_csv.push_value(None)?;
-        } else {
-            parsed_csv.push_value(Some(value))?;
-        };
-        self.skip_char_and_set_start()?;
-        Ok(())
-    }
-    fn add_empty_row(&mut self) -> Result<(), String> {
-        self.data
-            .parsed_csv
-            .as_mut()
-            .ok_or("parsed_csv is undefined, impossible")?
-            .add_empty_row()?;
-        Ok(())
-    }
-    fn store_char(&mut self) -> Result<(), String> {
-        self.data.index += 1;
-        Ok(())
-    }
-    fn skip_char_and_set_start(&mut self) -> Result<(), String> {
-        self.data.input = Some(&self.data.input.ok_or("input is empty")?[self.data.index + 1..]);
-        self.data.index = 0;
-        Ok(())
     }
     pub fn parse(&mut self, text: &'a String) -> Result<Option<CSVData>, Box<dyn Error>> {
         self.data.input = Some(text);
