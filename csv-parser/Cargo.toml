@@ -22,7 +22,7 @@ name = "bench"
 harness = false
 
 [dependencies]
-finite-state-machine = { git = "https://github.com/koriwi/finite-state-machine.git" }
+finite-state-machine = { git = "https://github.com/koriwi/finite-state-machine.git", branch = "master" }
 
 [dev-dependencies]
 criterion = "0.4.0"

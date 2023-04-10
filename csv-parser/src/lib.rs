@@ -11,25 +11,21 @@ impl<'a> CSVData<'a> {
     fn new(column_names: Vec<&'a str>, rows: Vec<CSVRow<'a>>) -> Self {
         CSVData { column_names, rows }
     }
-    fn push_column(&mut self, column_name: &'a str) -> Result<(), String> {
+    fn push_column(&mut self, column_name: &'a str) -> Result<(), &'static str> {
         self.column_names.push(column_name);
         Ok(())
     }
-    fn push_value(&mut self, value: Option<&'a str>) -> Result<(), String> {
+    fn push_value(&mut self, value: Option<&'a str>) -> Result<(), &'static str> {
         self.rows
             .last_mut()
             .ok_or("rows cannot be empty, impossible")?
             .push(value);
         Ok(())
     }
-    fn add_empty_row(&mut self) -> Result<(), String> {
+    fn add_empty_row(&mut self) -> Result<(), &'static str> {
         if let Some(row) = self.rows.last() {
             if row.len() != self.column_names.len() {
-                return Err(format!(
-                    "row length {} does not match column length {}",
-                    row.len(),
-                    self.column_names.len()
-                ));
+                return Err("row length does not match column length");
             }
         }
         self.rows.push(Vec::with_capacity(self.column_names.len()));
@@ -46,7 +42,7 @@ pub struct Data<'a> {
     parsed_csv: Option<CSVData<'a>>,
 }
 impl<'a> Data<'a> {
-    fn store_cs_value(&mut self, is_header: bool) -> Result<(), String> {
+    fn store_cs_value(&mut self, is_header: bool) -> Result<(), &'static str> {
         let value = &self.input.ok_or("input is empty")?[..self.index];
 
         let parsed_csv = self
@@ -67,19 +63,19 @@ impl<'a> Data<'a> {
         self.skip_char_and_set_start()?;
         Ok(())
     }
-    fn add_empty_row(&mut self) -> Result<(), String> {
+    fn add_empty_row(&mut self) -> Result<(), &'static str> {
         self.parsed_csv
             .as_mut()
             .ok_or("parsed_csv is undefined, impossible")?
             .add_empty_row()?;
         Ok(())
     }
-    fn store_char(&mut self) -> Result<(), String> {
+    fn store_char(&mut self) -> Result<(), &'static str> {
         self.index += 1;
         Ok(())
     }
     #[inline(always)]
-    fn skip_char_and_set_start(&mut self) -> Result<(), String> {
+    fn skip_char_and_set_start(&mut self) -> Result<(), &'static str> {
         self.input = Some(&self.input.ok_or("input is empty")?[self.index + 1..]);
         self.index = 0;
         Ok(())
@@ -140,7 +136,7 @@ pub use csv_parser::*;
 
 impl<'a> StartTransitions for CsvParser<'a> {
     fn illegal(&mut self) {}
-    fn begin(&mut self) -> Result<(), String> {
+    fn begin(&mut self) -> Result<(), &'static str> {
         let lines = self
             .data
             .input
@@ -155,22 +151,22 @@ impl<'a> StartTransitions for CsvParser<'a> {
 
 impl<'a> FindHeaderDelimiterTransitions for CsvParser<'a> {
     fn illegal(&mut self) {}
-    fn found_else(&mut self) -> Result<(), String> {
+    fn found_else(&mut self) -> Result<(), &'static str> {
         self.data.store_char()?;
         Ok(())
     }
-    fn found_delimiter(&mut self) -> Result<(), String> {
+    fn found_delimiter(&mut self) -> Result<(), &'static str> {
         self.data.store_cs_value(true)?;
         Ok(())
     }
-    fn empty(&mut self) -> Result<(), String> {
+    fn empty(&mut self) -> Result<(), &'static str> {
         Ok(())
     }
-    fn found_left_quote(&mut self) -> Result<(), String> {
+    fn found_left_quote(&mut self) -> Result<(), &'static str> {
         self.data.skip_char_and_set_start()?;
         Ok(())
     }
-    fn found_new_line(&mut self) -> Result<(), String> {
+    fn found_new_line(&mut self) -> Result<(), &'static str> {
         self.data.store_cs_value(true)?;
         self.data.add_empty_row()?;
         Ok(())
@@ -180,10 +176,10 @@ impl<'a> FindHeaderDelimiterTransitions for CsvParser<'a> {
 impl<'a> FindHeaderRightQuoteTransitions for CsvParser<'a> {
     fn illegal(&mut self) {}
 
-    fn found_else(&mut self) -> Result<(), String> {
+    fn found_else(&mut self) -> Result<(), &'static str> {
         FindHeaderDelimiterTransitions::found_else(self)
     }
-    fn found_right_quote(&mut self) -> Result<(), String> {
+    fn found_right_quote(&mut self) -> Result<(), &'static str> {
         self.data.store_cs_value(true)?;
         Ok(())
     }
@@ -191,10 +187,10 @@ impl<'a> FindHeaderRightQuoteTransitions for CsvParser<'a> {
 
 impl<'a> IgnoreNextHeaderDelimiterTransitions for CsvParser<'a> {
     fn illegal(&mut self) {}
-    fn found_delimiter(&mut self) -> Result<(), String> {
+    fn found_delimiter(&mut self) -> Result<(), &'static str> {
         self.data.skip_char_and_set_start()
     }
-    fn found_new_line(&mut self) -> Result<(), String> {
+    fn found_new_line(&mut self) -> Result<(), &'static str> {
         self.data.add_empty_row()?;
         self.data.skip_char_and_set_start()
     }
@@ -202,10 +198,10 @@ impl<'a> IgnoreNextHeaderDelimiterTransitions for CsvParser<'a> {
 
 impl<'a> IgnoreNextBodyDelimiterTransitions for CsvParser<'a> {
     fn illegal(&mut self) {}
-    fn found_delimiter(&mut self) -> Result<(), String> {
+    fn found_delimiter(&mut self) -> Result<(), &'static str> {
         self.data.skip_char_and_set_start()
     }
-    fn found_new_line(&mut self) -> Result<(), String> {
+    fn found_new_line(&mut self) -> Result<(), &'static str> {
         self.data.add_empty_row()?;
         self.data.skip_char_and_set_start()
     }
@@ -213,23 +209,23 @@ impl<'a> IgnoreNextBodyDelimiterTransitions for CsvParser<'a> {
 
 impl<'a> FindBodyDelimiterTransitions for CsvParser<'a> {
     fn illegal(&mut self) {}
-    fn found_new_line(&mut self) -> Result<(), String> {
+    fn found_new_line(&mut self) -> Result<(), &'static str> {
         self.data.store_cs_value(false)?;
         self.data.add_empty_row()?;
         Ok(())
     }
-    fn found_else(&mut self) -> Result<(), String> {
+    fn found_else(&mut self) -> Result<(), &'static str> {
         self.data.store_char()?;
         Ok(())
     }
-    fn found_delimiter(&mut self) -> Result<(), String> {
+    fn found_delimiter(&mut self) -> Result<(), &'static str> {
         self.data.store_cs_value(false)?;
         Ok(())
     }
-    fn empty(&mut self) -> Result<(), String> {
+    fn empty(&mut self) -> Result<(), &'static str> {
         Ok(())
     }
-    fn found_left_quote(&mut self) -> Result<(), String> {
+    fn found_left_quote(&mut self) -> Result<(), &'static str> {
         self.data.skip_char_and_set_start()?;
         Ok(())
     }
@@ -237,11 +233,11 @@ impl<'a> FindBodyDelimiterTransitions for CsvParser<'a> {
 
 impl<'a> FindBodyRightQuoteTransitions for CsvParser<'a> {
     fn illegal(&mut self) {}
-    fn found_right_quote(&mut self) -> Result<(), String> {
+    fn found_right_quote(&mut self) -> Result<(), &'static str> {
         self.data.store_cs_value(false)?;
         Ok(())
     }
-    fn found_else(&mut self) -> Result<(), String> {
+    fn found_else(&mut self) -> Result<(), &'static str> {
         self.data.store_char()?;
         Ok(())
     }
