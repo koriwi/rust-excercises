@@ -46,7 +46,7 @@ fn generate_csv(cols: u32, rows: u32, quotes: bool) -> String {
 
 fn parse(text: &String) {
     let mut csv_parser = CsvParser::new(',', true);
-    csv_parser.parse(black_box(&text)).unwrap();
+    csv_parser.parse(black_box(text)).unwrap();
 }
 
 fn small_no_quotes(c: &mut Criterion) {
